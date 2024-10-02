@@ -1,0 +1,74 @@
+---
+services:
+  telegraf:
+    image: telegraf
+    container_name: telegraf
+    hostname: telegraf
+    volumes:
+    - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - influxdb
+    links:
+      - influxdb
+    ports:
+    - '8125:8125'
+    networks:
+      - noc
+    restart: unless-stopped
+
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    hostname: telegraf
+    volumes:
+      - /db_graf/influxdb:/var/lib/influxdb
+    environment:
+      - INFLUXDB_DB=METRICS
+      - INFLUXDB_USERNAME=${INFLUXDB_USERNAME}
+      - INFLUXDB_PASSWORD=${INFLUXDB_PASSWORD}
+    ports:
+      - 8086:8086
+      - 8088:8088
+    networks:
+      - noc
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    hostname: grafana
+    volumes:
+      - /db_graf/grafana-storage:/var/lib/grafana
+      - /db_graf/grafana-provisioning/:/etc/grafana/provisioning
+    depends_on:
+      - influxdb
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    ports:
+      - 3000:3000
+    networks:
+      - noc
+    restart: unless-stopped
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    hostname: portainer
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 9443:9443
+    networks:
+      - noc
+    restart: unless-stopped
+
+volumes:
+  grafana_data: {}
+  influxdb_data: {}
+  portainer_data: {}
+
+networks:
+  noc:
+    external: true
